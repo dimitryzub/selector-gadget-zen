@@ -1,5 +1,14 @@
-# selector-gadget-zen
-SelectorGadget alternative extension for Zen (Firefox)
+<p align="center">
+    <img src="static/logo.jpg" alt="logo" width="128" height="128" />
+</p>
+
+<h1 align="center">🔍SelectorGadget-Zen</h1>
+
+<p align="center">
+    SelectorGadget Zen is similar extension for Zen (Firefox) based on original <a href="https://github.com/cantino/selectorgadget"> SelectorGadget</a> with replacement of <kbd>diff_match_patch</kbd> to use Longest Common Subsequence (LCS) algorithm.
+</p>
+
+![usage](static/usage.gif)
 
 ### Prerequisites
 

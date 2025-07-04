@@ -14,105 +14,8 @@ let lastCssSelector: string | null = null;
 let predictionHelper: DomPredictionHelper;
 let restrictedElements: HTMLElement[];
 
-// --- Start of ported SelectorGadget core logic ---
 
-/**
- * Diff Match and Patch
- * Copyright 2018 The diff-match-patch Authors.
- * https://github.com/google/diff-match-patch
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-// Define an interface for the diff_match_patch instance
-interface IDiffMatchPatch {
-  Diff_Timeout: number;
-  Diff_EditCost: number;
-  Match_Threshold: number;
-  Match_Distance: number;
-  Patch_DeleteThreshold: number;
-  Patch_Margin: number;
-  Match_MaxBits: number;
-  diff_main(text1: string, text2: string): [number, string][];
-  diff_linesToChars_(text1: string, text2: string): { chars1: string; chars2: string; lineArray: string[] };
-  diff_charsToLines_(diffs: [number, string][], lineArray: string[]): void;
-}
-
-var diff_match_patch = function(this: IDiffMatchPatch) {
-  this.Diff_Timeout = 1.0;
-  this.Diff_EditCost = 4;
-  this.Match_Threshold = 0.5;
-  this.Match_Distance = 1000;
-  this.Patch_DeleteThreshold = 0.5;
-  this.Patch_Margin = 4;
-  this.Match_MaxBits = 32;
-};
-diff_match_patch.prototype.diff_main = function(this: IDiffMatchPatch, text1: string, text2: string): [number, string][] {
-  var dmp = this;
-  var a = dmp.diff_linesToChars_(text1, text2);
-  var linearray = a.lineArray;
-  // The original JS library uses an internal version of diff_main with more arguments.
-  // We cast to any to allow this internal call without complex type definitions.
-  var diffs = (dmp as any).diff_main(a.chars1, a.chars2, false);
-  dmp.diff_charsToLines_(diffs, linearray);
-  return diffs;
-};
-diff_match_patch.prototype.diff_linesToChars_ = function(this: IDiffMatchPatch, text1: string, text2: string) {
-  var lineArray: string[] = [];
-  var lineHash: { [key: string]: number } = {};
-  lineArray[0] = '';
-  function diff_linesToCharsMunge_(text: string) {
-    var chars = '';
-    var lineStart = 0;
-    var lineEnd = -1;
-    var lineArrayLength = lineArray.length;
-    while (lineEnd < text.length - 1) {
-      lineEnd = text.indexOf('\n', lineStart);
-      if (lineEnd == -1) {
-        lineEnd = text.length - 1;
-      }
-      var line = text.substring(lineStart, lineEnd + 1);
-      if (lineHash.hasOwnProperty(line)) {
-        chars += String.fromCharCode(lineHash[line]);
-      } else {
-        if (lineArrayLength == maxLines) {
-          line = text.substring(lineStart);
-          lineEnd = text.length;
-        }
-        chars += String.fromCharCode(lineArrayLength);
-        lineHash[line] = lineArrayLength;
-        lineArray[lineArrayLength++] = line;
-      }
-      lineStart = lineEnd + 1;
-    }
-    return chars;
-  }
-  var maxLines = 40000;
-  var chars1 = diff_linesToCharsMunge_(text1);
-  maxLines = 65535;
-  var chars2 = diff_linesToCharsMunge_(text2);
-  return {chars1: chars1, chars2: chars2, lineArray: lineArray};
-};
-diff_match_patch.prototype.diff_charsToLines_ = function(this: IDiffMatchPatch, diffs: [number, string][], lineArray: string[]) {
-  for (var i = 0; i < diffs.length; i++) {
-    var chars = diffs[i][1];
-    var text: string[] = [];
-    for (var j = 0; j < chars.length; j++) {
-      text[j] = lineArray[chars.charCodeAt(j)];
-    }
-    diffs[i][1] = text.join('');
-  }
-};
+// Start of ported SelectorGadget core logic
 
 /**
  * A class for generating CSS selectors from selected and rejected elements.
@@ -134,7 +37,6 @@ class DomPredictionHelper {
   escapeCssNames(name: string): string {
     if (name) {
       try {
-        // This is the corrected line. It now looks for `sg-` instead of `selectorgadget_`.
         return name.replace(/\bsg-\w+\b/g, '')
                    .replace(/\\/g, '\\\\')
                    .replace(/[\#\;\&\,\.\+\*\~\'\:\"\!\^\$\[\]\(\)\=\>\|\/]/g, (e) => '\\' + e)
@@ -188,6 +90,7 @@ class DomPredictionHelper {
       if (e) {
         const siblings = this.siblingsWithoutTextNodes(e);
         if (e.nodeName.toLowerCase() !== "body") {
+          // Only look at 2 previous siblings.
           let j = siblings.length - 2 < 0 ? 0 : siblings.length - 2;
           while (j < siblings.length) {
             if (siblings[j] === e) break;
@@ -231,23 +134,54 @@ class DomPredictionHelper {
   }
 
   cssDiff(array: string[]): string {
-    const dmp = new (diff_match_patch as any)();
-    if (typeof array === 'undefined' || array.length === 0) return '';
+    if (!array || array.length === 0) {
+      return '';
+    }
+    if (array.length === 1) {
+      return array[0];
+    }
 
-    const existing_tokens: { [key: string]: string } = {};
-    const encoded_css_array = this.encodeCssForDiff(array, existing_tokens);
+    const tokenizedPaths = array.map(path => this.tokenizeCssForDiff(path));
 
-    let collective_common = encoded_css_array.pop()!;
-    for (const cssElem of encoded_css_array) {
-      const diff = dmp.diff_main(collective_common, cssElem);
-      collective_common = '';
-      for (const part of diff) {
-        if (part[0] === 0) {
-          collective_common += part[1];
+    let commonTokens = tokenizedPaths[0];
+
+    for (let i = 1; i < tokenizedPaths.length; i++) {
+      commonTokens = this.longestCommonSubsequence(commonTokens, tokenizedPaths[i]);
+    }
+
+    return this.cleanCss(commonTokens.join(''));
+  }
+
+  longestCommonSubsequence(a: string[], b: string[]): string[] {
+    const m = a.length;
+    const n = b.length;
+    const dp = Array(m + 1).fill(0).map(() => Array(n + 1).fill(0));
+
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        if (a[i - 1] === b[j - 1]) {
+          dp[i][j] = dp[i - 1][j - 1] + 1;
+        } else {
+          dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
         }
       }
     }
-    return this.decodeCss(collective_common, existing_tokens);
+
+    const lcs: string[] = [];
+    let i = m;
+    let j = n;
+    while (i > 0 && j > 0) {
+      if (a[i - 1] === b[j - 1]) {
+        lcs.unshift(a[i - 1]);
+        i--;
+        j--;
+      } else if (dp[i - 1][j] > dp[i][j - 1]) {
+        i--;
+      } else {
+        j--;
+      }
+    }
+    return lcs;
   }
 
   tokenizeCss(css_string: string): string[] {
@@ -274,6 +208,7 @@ class DomPredictionHelper {
     return tokens;
   }
 
+  // Same as tokenizeCss, except that siblings are treated as single tokens.
   tokenizeCssForDiff(css_string: string): string[] {
     let combined_tokens: string[] = [];
     let block: string[] = [];
@@ -288,31 +223,6 @@ class DomPredictionHelper {
       }
     }
     return block.length > 0 ? combined_tokens.concat(block) : combined_tokens;
-  }
-
-  decodeCss(string: string, existing_tokens: { [key: string]: string }): string {
-    const inverted = this.invertObject(existing_tokens);
-    let out = '';
-    for (const character of string.split('')) {
-      out += inverted[character];
-    }
-    return this.cleanCss(out);
-  }
-
-  encodeCssForDiff(strings: string[], existing_tokens: { [key: string]: string }): string[] {
-    let codepoint = 50;
-    const strings_out: string[] = [];
-    for (const string of strings) {
-      let out = "";
-      for (const token of this.tokenizeCssForDiff(string)) {
-        if (!existing_tokens[token]) {
-          existing_tokens[token] = String.fromCharCode(codepoint++);
-        }
-        out += existing_tokens[token];
-      }
-      strings_out.push(out);
-    }
-    return strings_out;
   }
 
   tokenPriorities(tokens: string[]): number[] {
@@ -365,18 +275,16 @@ class DomPredictionHelper {
     const ordering = this.orderFromPriorities(priorities);
     const selector = this.cleanCss(css);
     let best_so_far = "";
-
     if (this.selectorGets('all', selected, selector) && this.selectorGets('none', rejected, selector)) {
       best_so_far = selector;
     }
-
     let got_shorter = true;
     while (got_shorter) {
       got_shorter = false;
       for (let i = 0; i < parts.length; i++) {
         const part_index = ordering[i];
-        if (parts[part_index].length === 0) continue;
 
+        if (parts[part_index].length === 0) continue;
         const first = parts[part_index].substring(0, 1);
         if (first === ' ') continue;
         if (this.wouldLeaveFreeFloatingNthChild(parts, part_index)) continue;
@@ -396,6 +304,7 @@ class DomPredictionHelper {
     return this.cleanCss(best_so_far);
   }
 
+  // Remove some elements depending on whether this is a sibling selector or not, and put them back if the block returns false.
   _removeElements(part_index: number, parts: string[], firstChar: string, callback: (selector: string) => boolean): void {
     const look_back_index = (firstChar === '+' || firstChar === '~') ? this.positionOfSpaceBeforeIndexOrLineStart(part_index, parts) : part_index;
 
@@ -421,6 +330,7 @@ class DomPredictionHelper {
     return i < 0 ? 0 : i;
   }
 
+  // Has to handle parts with zero length.
   wouldLeaveFreeFloatingNthChild(parts: string[], part_index: number): boolean {
     let space_is_on_left = false, nth_child_is_on_right = false;
 
@@ -435,6 +345,7 @@ class DomPredictionHelper {
     return space_is_on_left && nth_child_is_on_right;
   }
 
+  // Not intended for user CSS, does destructive sibling removal.  Expects strings to be escaped.
   cleanCss(css: string): string {
     let cleaned_css = css;
     let last_cleaned_css = null;
@@ -459,42 +370,36 @@ class DomPredictionHelper {
     const css = this.cssDiff(selected_paths);
     let simplest = this.simplifyCss(css, selected, rejected);
 
+    // Do we get off easy?
     if (simplest && simplest.length > 0) return simplest;
 
+    // Okay, then make a union and possibly try to reduce subsets.
     let union = selected_paths.join(' , ');
     union = this.cleanCss(union);
 
     return this.simplifyCss(union, selected, rejected);
   }
 
+  // Assumes list is an array of elements.
   selectorGets(type: 'all' | 'none', list: HTMLElement[], selector: string): boolean {
     if (!selector || selector.trim() === '') {
         return type === 'none';
     }
     if (list.length === 0) {
+        // This correctly (i guess?) implements the two separate conditions from the original coffeescript.
+        // if type is 'all', returns false. if type is 'none', returns true.
         return type === 'none';
     }
 
     try {
         if (type === 'all') {
-            // Every element in our list must match the selector.
-            for (const el of list) {
-                if (!el.matches(selector)) {
-                    return false;
-                }
-            }
-            return true;
+            return list.every(el => el.matches(selector));
         } else { // 'none'
-            // No element in the list should match the selector.
-            for (const el of list) {
-                if (el.matches(selector)) {
-                    return false;
-                }
-            }
-            return true;
+            return !list.some(el => el.matches(selector));
         }
     } catch (e) {
-        return type === 'none';
+        console.error("Error on selector: " + selector, e);
+        return type === 'none'; // Fail safely
     }
   }
 
@@ -507,11 +412,10 @@ class DomPredictionHelper {
   }
 }
 
-// --- End of ported SelectorGadget core logic ---
+// End of ported SelectorGadget core logic
 
 
 // UI CREATION & EVENT LISTENERS
-
 function createUI() {
   if (document.getElementById('selector-gadget-ui')) return;
 
@@ -678,9 +582,8 @@ function handlePageClick(event: MouseEvent) {
       // It's green. Remove it from the positive list.
       selectedElements = selectedElements.filter(el => el !== target);
     } else if (target.classList.contains('sg-rejected')) {
-      // It's red. Remove it from the negative list and add it to the positive list.
+      // It's red. Remove it from the negative list, making it neutral.
       rejectedElements = rejectedElements.filter(el => el !== target);
-      selectedElements.push(target);
     } else if (target.classList.contains('sg-suggested')) {
       // It's yellow. Add it to the negative list to reject it.
       rejectedElements.push(target);
