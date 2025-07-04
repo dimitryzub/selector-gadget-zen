@@ -1,0 +1,20 @@
+{
+  "name": "selector-gadget-ext",
+  "version": "1.0.0",
+  "description": "Selector Gadget analog for Firefox (Zen) to inspect and copy CSS/XPath selectors.",
+  "scripts": {
+    "clean": "rimraf dist",
+    "build:ts": "tsc",
+    "build:assets": "cpx \"src/**/!(*.ts)\" dist",
+    "build": "npm run clean && npm run build:ts && npm run build:assets",
+    "start": "web-ext run --source-dir ./dist --firefox=\"C:\\Program Files\\Zen Browser\\zen.exe\" --firefox-profile=\"C:\\Users\\Dmitriy\\AppData\\Roaming\\Zen\\Profiles\\ipxo0zz5.web-ext-dev\"",
+    "package": "web-ext build --source-dir ./dist"
+  },
+  "devDependencies": {
+    "@types/firefox-webext-browser": "^120.0.4",
+    "cpx": "^1.5.0",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.8.3",
+    "web-ext": "^8.8.0"
+  }
+}

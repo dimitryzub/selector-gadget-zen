@@ -1,0 +1,133 @@
+:root {
+  --sg-bg: #111;
+  --sg-border: #333;
+  --sg-text: #eee;
+  --sg-accent: #0070f3;
+  --sg-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  --sg-yellow: rgba(255, 255, 0, 0.4);
+  --sg-red: rgba(255, 0, 0, 0.4);
+  --sg-green-outline: #22c55e; /* A nice, bright green for outlines */
+}
+
+/* The main UI bar */
+#selector-gadget-ui {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 2147483647; /* Max z-index */
+  background-color: var(--sg-bg);
+  border: 1px solid var(--sg-border);
+  border-radius: 8px;
+  box-shadow: var(--sg-shadow);
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: sans-serif;
+  transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+}
+
+#selector-gadget-ui.hidden {
+  opacity: 0;
+  transform: translateY(20px);
+  pointer-events: none;
+}
+
+/* The selector input field */
+#sg-selector-input {
+  background: transparent;
+  border: none;
+  color: var(--sg-text);
+  outline: none;
+  font-size: 14px;
+  width: 300px;
+}
+
+/* General button style */
+#selector-gadget-ui button {
+  background: transparent;
+  border: 1px solid var(--sg-border);
+  color: var(--sg-text);
+  border-radius: 5px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#selector-gadget-ui button:hover {
+  background-color: var(--sg-border);
+}
+
+#sg-close-button {
+  padding: 4px;
+  width: 24px;
+  height: 24px;
+}
+
+/* Toggle Switch for CSS/XPath */
+.sg-toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 24px;
+}
+.sg-toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.sg-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
+  border-radius: 24px;
+  background-color: var(--sg-border);
+}
+.sg-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+input:checked + .sg-slider {
+  background-color: var(--sg-accent);
+}
+input:checked + .sg-slider:before {
+  transform: translateX(26px);
+}
+
+
+/* Hover effect for elements on the page */
+.sg-hover {
+  outline: 2px solid var(--sg-accent) !important;
+  outline-offset: -2px;
+}
+
+/* Predicted elements (yellow background) */
+.sg-suggested {
+  background-color: var(--sg-yellow) !important;
+}
+
+/* User-selected positive examples (green outline) */
+.sg-selected {
+  outline: 2px solid var(--sg-green-outline) !important;
+  outline-offset: -2px;
+}
+
+/* User-selected negative examples (red background) */
+.sg-rejected {
+  background-color: var(--sg-red) !important;
+}

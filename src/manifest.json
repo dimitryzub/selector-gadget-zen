@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Selector Gadget Zen",
+  "version": "1.0.0",
+  "description": "Inspect elements and copy their CSS or XPath selectors.",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_title": "Toggle Selector Inspector"
+  },
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "css": ["styles.css"],
+      "js": ["content_script.js"]
+    }
+  ],
+  "icons": {
+    "48": "icons/icon_48x48.png"
+  }
+}
