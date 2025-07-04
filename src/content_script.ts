@@ -7,13 +7,12 @@ let isPicking = false;
 let selectedElements: HTMLElement[] = [];
 let rejectedElements: HTMLElement[] = [];
 let lastHovered: HTMLElement | null = null;
+let hoverLabel: HTMLElement | null = null;
 let lastCssSelector: string | null = null;
 
 // The prediction engine, ported from the original SelectorGadget
 let predictionHelper: DomPredictionHelper;
-// Elements that should never be selected
 let restrictedElements: HTMLElement[];
-
 
 // --- Start of ported SelectorGadget core logic ---
 
@@ -558,6 +557,11 @@ function createUI() {
   ui.append(selectorInput, toggleLabel, convertButton, clearButton, copyButton, closeButton);
   document.body.appendChild(ui);
 
+  // Create and append the hover label
+  hoverLabel = document.createElement('div');
+  hoverLabel.id = 'sg-hover-label';
+  document.body.appendChild(hoverLabel);
+
   addEventListeners();
 }
 
@@ -605,11 +609,27 @@ function addEventListeners() {
     lastHovered = e.target as HTMLElement;
     if (!ui?.contains(lastHovered)) {
       lastHovered.classList.add('sg-hover');
+
+      // Update and show the label
+      if (hoverLabel && lastHovered.parentElement) {
+        const rect = lastHovered.getBoundingClientRect();
+        const parentName = lastHovered.parentElement.tagName.toLowerCase();
+        const selfName = lastHovered.tagName.toLowerCase();
+        
+        hoverLabel.textContent = `${parentName} > ${selfName}`;
+        hoverLabel.style.display = 'block';
+        hoverLabel.style.top = `${window.scrollY + rect.bottom + 2}px`;
+        hoverLabel.style.left = `${window.scrollX + rect.left}px`;
+      }
     }
   });
 
   document.addEventListener('mouseout', () => {
     lastHovered?.classList.remove('sg-hover');
+    // Hide the label
+    if (hoverLabel) {
+      hoverLabel.style.display = 'none';
+    }
   });
 
   document.addEventListener('click', handlePageClick, true);

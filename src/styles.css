@@ -116,6 +116,20 @@ input:checked + .sg-slider:before {
   outline-offset: -2px;
 }
 
+/* Label for hovered elements */
+#sg-hover-label {
+  display: none;
+  position: absolute;
+  z-index: 2147483646; /* Just below the main UI */
+  background-color: var(--sg-accent);
+  color: white;
+  font-family: sans-serif;
+  font-size: 10px;
+  padding: 2px 5px;
+  border-radius: 3px;
+  pointer-events: none; /* Important: lets clicks pass through */
+}
+
 /* Predicted elements (yellow background) */
 .sg-suggested {
   background-color: var(--sg-yellow) !important;
