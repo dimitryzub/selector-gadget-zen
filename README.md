@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="static/logo.jpg" alt="logo" width="128" height="128" />
+    <img src="static/logo.png" alt="logo" width="128" height="128" />
 </p>
 
 <h1 align="center">🔍SelectorGadget-Zen</h1>
